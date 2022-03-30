@@ -137,7 +137,8 @@ def lambda_handler(event, context):
             out_key = key.replace('.tif', '.jpg').replace('raw', 'web')
 
             # Upload resized image to destination bucket
-            s3.put_object(Body=out_jpg_buffer, Bucket=bucket, Key=out_key)
+            s3.put_object(Body=out_jpg_buffer, Bucket=bucket,
+                          Key=out_key, StorageClass='GLACIER_IR')
 
     except Exception as e:
         print(e)
