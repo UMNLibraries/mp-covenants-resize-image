@@ -11,7 +11,7 @@ print('Loading function')
 s3 = boto3.client('s3')
 
 
-def save_jpeg_to_target_size(key: str, in_tiff_body: str, target_bytes: int, resize=False, resize_max=2000) -> str:
+def save_jpeg_to_target_size(key: str, in_tiff_body: str, target_bytes: int, watermark=True, resize=False, resize_max=2000) -> str:
     """Save the image as JPEG with the given name at best quality that makes less than "target" bytes
     Source: https://stackoverflow.com/questions/52259476/how-to-reduce-a-jpeg-size-to-a-desired-size
     Args:
@@ -19,6 +19,7 @@ def save_jpeg_to_target_size(key: str, in_tiff_body: str, target_bytes: int, res
         target_bytes: The maximum file size. The output JPEG will be smaller than this value.
     Returns:
         out_jpg_path if save successful, or False
+        watermark: Boolean -- whether or not to add a watermark
         resize: Boolean -- whether or not to resize the image to resize_max before optimizing
         resize_max: The maxium pixel width or height used to resize. The function will choose
             the largest dimension (width vs height) and resize that to the resize_max,
@@ -34,7 +35,8 @@ def save_jpeg_to_target_size(key: str, in_tiff_body: str, target_bytes: int, res
     if im.mode != 'RGB':
         im = im.convert('RGB')
 
-    im = add_watermark(im)
+    if watermark:
+        im = add_watermark(im)
 
     if resize:
         print('Trying with resize...')
@@ -131,7 +133,7 @@ def lambda_handler(event, context):
         if not out_jpg_buffer:
             # Try with resize
             out_jpg_buffer = save_jpeg_to_target_size(
-                key, response['Body'], 1000000, True)
+                key, response['Body'], 1000000, True, True)
 
         if out_jpg_buffer:
             out_key = key.replace('.tif', '.jpg').replace('raw', 'web')
