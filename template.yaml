@@ -9,7 +9,7 @@ Description: >
 Globals:
   Function:
     Timeout: 30
-    MemorySize: 500
+    MemorySize: 1500
 
 Resources:
   CovenantsResizeImageFunction:

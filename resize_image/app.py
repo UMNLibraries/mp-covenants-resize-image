@@ -9,6 +9,7 @@ from PIL import Image, ImageFont, ImageDraw
 print('Loading function')
 
 s3 = boto3.client('s3')
+Image.MAX_IMAGE_PIXELS = 1000000000
 
 
 def save_jpeg_to_target_size(key: str, in_tiff_body: str, target_bytes: int, watermark=True, resize=False, resize_max=2000) -> str:
@@ -116,11 +117,16 @@ def add_watermark(img, font_ratio=1.5, diagonal_percent=0.5,
 
 def lambda_handler(event, context):
     #print("Received event: " + json.dumps(event, indent=2))
+    if 'Records' in event:
+        # Get the object from a more standard put event
+        bucket = event['Records'][0]['s3']['bucket']['name']
+        key = urllib.parse.unquote_plus(
+            event['Records'][0]['s3']['object']['key'], encoding='utf-8')
+    else:
+        # Coming from step function
+        bucket = event['body']['bucket']
+        key = event['body']['orig']
 
-    # Get the object from the event and show its content type
-    bucket = event['Records'][0]['s3']['bucket']['name']
-    key = urllib.parse.unquote_plus(
-        event['Records'][0]['s3']['object']['key'], encoding='utf-8')
     try:
         response = s3.get_object(Bucket=bucket, Key=key)
         print("CONTENT TYPE: " + response['ContentType'])
@@ -129,11 +135,11 @@ def lambda_handler(event, context):
         print(key, key.replace('.tif', '.jpg'))
 
         out_jpg_buffer = save_jpeg_to_target_size(
-            key, response['Body'], 1000000)
-        if not out_jpg_buffer:
-            # Try with resize
-            out_jpg_buffer = save_jpeg_to_target_size(
-                key, response['Body'], 1000000, True, True)
+            key, response['Body'], 1000000, True, True)
+        # if not out_jpg_buffer:
+        #     # Try with resize
+        #     out_jpg_buffer = save_jpeg_to_target_size(
+        #         key, response['Body'], 1000000, True, True)
 
         if out_jpg_buffer:
             out_key = key.replace('.tif', '.jpg').replace('raw', 'web')
@@ -154,8 +160,11 @@ def lambda_handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps({
+        "body": {
             "message": "hello world",
+            "bucket": bucket,
+            "orig_img": key,
+            "web_img": out_key
             # "location": ip.text.replace("\n", "")
-        }),
+        }
     }
