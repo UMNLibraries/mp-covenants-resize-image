@@ -2,8 +2,10 @@ import io
 import sys
 import json
 import math
+import uuid
 import urllib.parse
 import boto3
+from pathlib import PurePath
 from PIL import Image, ImageFont, ImageDraw
 
 print('Loading function')
@@ -122,11 +124,12 @@ def lambda_handler(event, context):
         bucket = event['Records'][0]['s3']['bucket']['name']
         key = urllib.parse.unquote_plus(
             event['Records'][0]['s3']['object']['key'], encoding='utf-8')
+        public_uuid = 'standalone-' + uuid.uuid4().hex
     else:
         # Coming from step function
         bucket = event['body']['bucket']
         key = event['body']['orig']
-
+        public_uuid = event['body']['uuid']
     try:
         response = s3.get_object(Bucket=bucket, Key=key)
         print("CONTENT TYPE: " + response['ContentType'])
@@ -144,11 +147,14 @@ def lambda_handler(event, context):
         if out_jpg_buffer:
             out_key = key.replace('.tif', '.jpg').replace('raw', 'web')
 
+            # Change final part of key to uuid, keeping other "folders"
+            randomized_out_key = str(PurePath(out_key).with_name(public_uuid + '.jpg'))
+
             # Upload resized image to destination bucket
             s3.put_object(
                 Body=out_jpg_buffer,
                 Bucket=bucket,
-                Key=out_key,
+                Key=randomized_out_key,
                 StorageClass='GLACIER_IR',
                 ContentType='image/jpeg'
             )
@@ -164,7 +170,8 @@ def lambda_handler(event, context):
             "message": "hello world",
             "bucket": bucket,
             "orig_img": key,
-            "web_img": out_key
+            "web_img": randomized_out_key,
+            "uuid": public_uuid
             # "location": ip.text.replace("\n", "")
         }
     }
