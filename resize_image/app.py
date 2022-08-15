@@ -156,7 +156,8 @@ def lambda_handler(event, context):
                 Bucket=bucket,
                 Key=randomized_out_key,
                 StorageClass='GLACIER_IR',
-                ContentType='image/jpeg'
+                ContentType='image/jpeg',
+                ACL='public-read'
             )
 
     except Exception as e:
