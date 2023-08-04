@@ -53,7 +53,7 @@ def save_jpeg_to_target_size(key: str, in_tiff_body: str, target_bytes: int, wat
             new_width = int(float(im.size[0])
                             * float(new_height/float(im.size[1])))
 
-        im = im.resize((new_width, new_height), Image.ANTIALIAS)
+        im = im.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
     # Min and Max quality
     Qmin, Qmax = 12, 96
@@ -101,7 +101,16 @@ def add_watermark(img, font_ratio=1.5, diagonal_percent=0.5,
     font = ImageFont.truetype('fonts/Arial.ttf', font_size)
 
     opacity = int(256 * opacity_scalar)
-    mark_width, mark_height = font.getsize(watermark_text)
+
+    # See details on issue with v 10.0.0 of Pillow: https://github.com/tensorflow/models/commit/0aa039f16361f14ee587a9b2d99a16be01d9dcf9
+    if hasattr(font, 'getsize'):
+        mark_width, mark_height = font.getsize(watermark_text)
+    else:
+        text_bbox = font.getbbox(watermark_text)
+        # mark_width = text_bbox[2] - text_bbox[0]
+        # mark_height = text_bbox[3] - text_bbox[1]
+        mark_width = text_bbox[2]
+        mark_height = text_bbox[3]
 
     watermark = Image.new('RGBA', (mark_width, mark_height), (0, 0, 0, 0))
 
