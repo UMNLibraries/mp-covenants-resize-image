@@ -1,4 +1,5 @@
 import io
+import re
 import sys
 import json
 import math
@@ -135,7 +136,7 @@ def lambda_handler(event, context):
         print("CONTENT TYPE: " + response['ContentType'])
         # return response['ContentType']
 
-        print(key, key.replace('.tif', '.jpg'))
+        print(key, re.sub('\.tif', '.jpg', key, flags=re.IGNORECASE))
 
         out_jpg_buffer = save_jpeg_to_target_size(
             key, response['Body'], 1000000, True, True)
@@ -145,7 +146,8 @@ def lambda_handler(event, context):
         #         key, response['Body'], 1000000, True, True)
 
         if out_jpg_buffer:
-            out_key = key.replace('.tif', '.jpg').replace('raw', 'web')
+            # out_key = key.replace('.tif', '.jpg').replace('raw', 'web')
+            out_key = re.sub('\.tif', '.jpg', key, flags=re.IGNORECASE).replace('raw', 'web')
 
             # Change final part of key to uuid, keeping other "folders"
             randomized_out_key = str(PurePath(out_key).with_name(public_uuid + '.jpg'))
