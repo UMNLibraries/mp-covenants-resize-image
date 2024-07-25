@@ -9,7 +9,6 @@ import boto3
 from pathlib import PurePath
 from PIL import Image, ImageFont, ImageDraw
 
-print('Loading function')
 
 s3 = boto3.client('s3')
 Image.MAX_IMAGE_PIXELS = 1000000000
@@ -86,6 +85,7 @@ def save_jpeg_to_target_size(key: str, in_tiff_body: str, target_bytes: int, wat
 
 def add_watermark(img, font_ratio=1.5, diagonal_percent=0.5,
                   opacity_scalar=0.15):
+    """ Adds a translucent gray 'UNOFFICIAL DOCUMENT' watermark over the image."""
 
     img = img.convert('RGBA')
 
@@ -107,8 +107,6 @@ def add_watermark(img, font_ratio=1.5, diagonal_percent=0.5,
         mark_width, mark_height = font.getsize(watermark_text)
     else:
         text_bbox = font.getbbox(watermark_text)
-        # mark_width = text_bbox[2] - text_bbox[0]
-        # mark_height = text_bbox[3] - text_bbox[1]
         mark_width = text_bbox[2]
         mark_height = text_bbox[3]
 
@@ -128,7 +126,8 @@ def add_watermark(img, font_ratio=1.5, diagonal_percent=0.5,
 
 
 def lambda_handler(event, context):
-    #print("Received event: " + json.dumps(event, indent=2))
+    """ This function receives a TIF or JPEG file and creates a scaled-down, web-friendly JPEG with a watermark on it for public transcription using the Pillow library. The output filename includes a randomized UUID suffix to deter scraping, since this image's permissions will be set to publicly viewable."""
+
     if 'Records' in event:
         # Get the object from a more standard put event
         bucket = event['Records'][0]['s3']['bucket']['name']
@@ -143,19 +142,13 @@ def lambda_handler(event, context):
     try:
         response = s3.get_object(Bucket=bucket, Key=key)
         print("CONTENT TYPE: " + response['ContentType'])
-        # return response['ContentType']
 
         print(key, re.sub('\.tif', '.jpg', key, flags=re.IGNORECASE))
 
         out_jpg_buffer = save_jpeg_to_target_size(
             key, response['Body'], 1000000, True, True)
-        # if not out_jpg_buffer:
-        #     # Try with resize
-        #     out_jpg_buffer = save_jpeg_to_target_size(
-        #         key, response['Body'], 1000000, True, True)
 
         if out_jpg_buffer:
-            # out_key = key.replace('.tif', '.jpg').replace('raw', 'web')
             out_key = re.sub('\.tif', '.jpg', key, flags=re.IGNORECASE).replace('raw', 'web')
 
             # Change final part of key to uuid, keeping other "folders"
