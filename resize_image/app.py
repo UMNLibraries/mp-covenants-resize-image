@@ -133,23 +133,28 @@ def lambda_handler(event, context):
         bucket = event['Records'][0]['s3']['bucket']['name']
         key = urllib.parse.unquote_plus(
             event['Records'][0]['s3']['object']['key'], encoding='utf-8')
+        orig_img = urllib.parse.unquote_plus(
+            event['Records'][0]['s3']['object']['orig'], encoding='utf-8')
+        ocr_json = urllib.parse.unquote_plus(
+            event['Records'][0]['s3']['object']['json'], encoding='utf-8')
         public_uuid = 'standalone-' + uuid.uuid4().hex
     else:
         # Coming from step function
         bucket = event['body']['bucket']
         key = event['body']['orig']
+        ocr_json = event['body']['json']
         public_uuid = event['body']['uuid']
     try:
         response = s3.get_object(Bucket=bucket, Key=key)
         print("CONTENT TYPE: " + response['ContentType'])
 
-        print(key, re.sub('\.tif', '.jpg', key, flags=re.IGNORECASE))
+        print(key, re.sub(r'\.tif', '.jpg', key, flags=re.IGNORECASE))
 
         out_jpg_buffer = save_jpeg_to_target_size(
             key, response['Body'], 1000000, True, True)
 
         if out_jpg_buffer:
-            out_key = re.sub('\.tif', '.jpg', key, flags=re.IGNORECASE).replace('raw', 'web')
+            out_key = re.sub(r'\.tif', '.jpg', key, flags=re.IGNORECASE).replace('raw', 'web')
 
             # Change final part of key to uuid, keeping other "folders"
             randomized_out_key = str(PurePath(out_key).with_name(public_uuid + '.jpg'))
@@ -175,6 +180,7 @@ def lambda_handler(event, context):
             "message": "hello world",
             "bucket": bucket,
             "orig_img": key,
+            "ocr_json": ocr_json,
             "web_img": randomized_out_key,
             "uuid": public_uuid
             # "location": ip.text.replace("\n", "")

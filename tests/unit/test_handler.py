@@ -1,73 +1,79 @@
+import io
 import json
-
+import toml
+import boto3
 import pytest
 
-from hello_world import app
+from resize_image import app
+
+with open('samconfig.toml', 'r') as f:
+    config = toml.load(f)
+    s3_bucket = config['default']['deploy']['parameters']['s3_bucket']
+    s3_region = config['default']['deploy']['parameters']['region']
+
+
+s3 = boto3.client('s3')
+
+
+def get_s3_match_json(bucket, key):
+    response = s3.get_object(Bucket=bucket, Key=key)
+    return json.loads(response['Body'].read())
+
+
+# def build_lambda_input(bucket, infile_json):
+
+#     return {
+#         "statusCode": 200,
+#         "body": {
+#             "message": "hello world",
+#             "bucket": bucket,
+#             "orig": "raw/mn-sherburne-county/batch3/R3Part2/Abstract 88291.jpg",
+#             "json": infile_json,
+#             # "txt": "ocr/txt/mn-sherburne-county/batch3/R3Part2/Abstract 88291.txt",
+#             # "stats": "ocr/stats/mn-sherburne-county/batch3/R3Part2/Abstract 88291__69727524d8d04bfc99ee0f0bf22584e0.json",
+#             "uuid": "69727524d8d04bfc99ee0f0bf22584e0",
+#             # "handwriting_pct": 0.01
+#         }
+#     }
 
 
 @pytest.fixture()
-def apigw_event():
+def basic_ocr_step_output():
     """ Generates API GW Event"""
 
     return {
-        "body": '{ "test": "body"}',
-        "resource": "/{proxy+}",
-        "requestContext": {
-            "resourceId": "123456",
-            "apiId": "1234567890",
-            "resourcePath": "/{proxy+}",
-            "httpMethod": "POST",
-            "requestId": "c6af9ac6-7b61-11e6-9a41-93e8deadbeef",
-            "accountId": "123456789012",
-            "identity": {
-                "apiKey": "",
-                "userArn": "",
-                "cognitoAuthenticationType": "",
-                "caller": "",
-                "userAgent": "Custom User Agent String",
-                "user": "",
-                "cognitoIdentityPoolId": "",
-                "cognitoIdentityId": "",
-                "cognitoAuthenticationProvider": "",
-                "sourceIp": "127.0.0.1",
-                "accountId": "",
-            },
-            "stage": "prod",
-        },
-        "queryStringParameters": {"foo": "bar"},
-        "headers": {
-            "Via": "1.1 08f323deadbeefa7af34d5feb414ce27.cloudfront.net (CloudFront)",
-            "Accept-Language": "en-US,en;q=0.8",
-            "CloudFront-Is-Desktop-Viewer": "true",
-            "CloudFront-Is-SmartTV-Viewer": "false",
-            "CloudFront-Is-Mobile-Viewer": "false",
-            "X-Forwarded-For": "127.0.0.1, 127.0.0.2",
-            "CloudFront-Viewer-Country": "US",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Upgrade-Insecure-Requests": "1",
-            "X-Forwarded-Port": "443",
-            "Host": "1234567890.execute-api.us-east-1.amazonaws.com",
-            "X-Forwarded-Proto": "https",
-            "X-Amz-Cf-Id": "aaaaaaaaaae3VYQb9jd-nvCd-de396Uhbp027Y2JvkCPNLmGJHqlaA==",
-            "CloudFront-Is-Tablet-Viewer": "false",
-            "Cache-Control": "max-age=0",
-            "User-Agent": "Custom User Agent String",
-            "CloudFront-Forwarded-Proto": "https",
-            "Accept-Encoding": "gzip, deflate, sdch",
-        },
-        "pathParameters": {"proxy": "/examplepath"},
-        "httpMethod": "POST",
-        "stageVariables": {"baz": "qux"},
-        "path": "/examplepath",
+        "statusCode": 200,
+        "body": {
+            "message": "hello world",
+            "bucket": s3_bucket,
+            "orig": "raw/mn-sherburne-county/batch3/R3Part2/Abstract 88291.jpg",
+            "json": "ocr/json/mn-sherburne-county/batch3/R3Part2/Abstract 88291.json",
+            "txt": "ocr/txt/mn-sherburne-county/batch3/R3Part2/Abstract 88291.txt",
+            "stats": "ocr/stats/mn-sherburne-county/batch3/R3Part2/Abstract 88291__69727524d8d04bfc99ee0f0bf22584e0.json",
+            "uuid": "69727524d8d04bfc99ee0f0bf22584e0",
+            "handwriting_pct": 0.01
+        }
     }
 
 
-def test_lambda_handler(apigw_event, mocker):
+def test_input_output_results(basic_ocr_step_output):
 
-    ret = app.lambda_handler(apigw_event, "")
-    data = json.loads(ret["body"])
+    ret = app.lambda_handler(basic_ocr_step_output, "")
+    data = ret["body"]
+    print(data)
 
     assert ret["statusCode"] == 200
-    assert "message" in ret["body"]
     assert data["message"] == "hello world"
-    # assert "location" in data.dict_keys()
+
+    assert "uuid" in data
+    assert "orig_img" in data
+    assert "ocr_json" in data
+
+    assert data["uuid"] == basic_ocr_step_output['body']['uuid']
+    assert data["orig_img"] == basic_ocr_step_output['body']['orig']
+    assert data["ocr_json"] == basic_ocr_step_output['body']['json']
+
+
+    # # Check if image in correct mode
+    # im = open_s3_image(data['bucket'], data['highlighted_img'])
+    # assert im.mode == 'RGB'
