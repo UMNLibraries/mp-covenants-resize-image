@@ -73,6 +73,8 @@ def test_input_output_results(basic_ocr_step_output):
     assert data["orig_img"] == basic_ocr_step_output['body']['orig']
     assert data["ocr_json"] == basic_ocr_step_output['body']['json']
 
+    assert 'up' == 'down'
+
 
     # # Check if image in correct mode
     # im = open_s3_image(data['bucket'], data['highlighted_img'])
