@@ -39,7 +39,7 @@ def get_s3_match_json(bucket, key):
 
 @pytest.fixture()
 def basic_ocr_step_output():
-    """ Generates API GW Event"""
+    """ Generates API GW Event based on output from OCR step Lambda"""
 
     return {
         "statusCode": 200,
@@ -57,8 +57,10 @@ def basic_ocr_step_output():
 
 
 def test_input_output_results(basic_ocr_step_output):
+    ''' Does this run appropriately with output of mp-covenants-ocr-page Lambda?'''
+    fixture = basic_ocr_step_output
 
-    ret = app.lambda_handler(basic_ocr_step_output, "")
+    ret = app.lambda_handler(fixture, "")
     data = ret["body"]
     print(data)
 
@@ -69,11 +71,11 @@ def test_input_output_results(basic_ocr_step_output):
     assert "orig_img" in data
     assert "ocr_json" in data
 
-    assert data["uuid"] == basic_ocr_step_output['body']['uuid']
-    assert data["orig_img"] == basic_ocr_step_output['body']['orig']
-    assert data["ocr_json"] == basic_ocr_step_output['body']['json']
+    assert data["uuid"] == fixture['body']['uuid']
+    assert data["orig_img"] == fixture['body']['orig']
+    assert data["ocr_json"] == fixture['body']['json']
 
-    assert 'up' == 'down'
+    # assert 'up' == 'down'
 
 
     # # Check if image in correct mode
