@@ -1,0 +1,10 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "covenants-resize-image"
+s3_bucket = "XXXX"
+s3_prefix = "covenants-resize-image"
+region = "XXXX"
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
