@@ -35,6 +35,12 @@ To rebuild and deploy the application:
 sam build && sam deploy
 ```
 
+Example with non-default aws profile:
+
+```bash
+sam build && sam deploy --profile contracosta --config-env contracosta
+```
+
 To run tests:
 
 ```bash
