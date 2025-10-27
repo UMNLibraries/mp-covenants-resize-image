@@ -128,6 +128,9 @@ def add_watermark(img, font_ratio=1.5, diagonal_percent=0.5,
 def lambda_handler(event, context):
     """ This function receives a TIF or JPEG file and creates a scaled-down, web-friendly JPEG with a watermark on it for public transcription using the Pillow library. The output filename includes a randomized UUID suffix to deter scraping, since this image's permissions will be set to publicly viewable."""
 
+    in_bucket = None
+    out_bucket = None
+
     if 'Records' in event:
         # Get the object from a more standard put event
         bucket = event['Records'][0]['s3']['bucket']['name']
@@ -144,8 +147,20 @@ def lambda_handler(event, context):
         key = event['body']['orig']
         ocr_json = event['body']['json']
         public_uuid = event['body']['uuid']
+
+        if 'in_bucket' in event['body']:
+            in_bucket = event['body']['in_bucket']
+        if 'out_bucket' in event['body']:
+            out_bucket = event['body']['out_bucket']
+
+    if not in_bucket:
+        in_bucket = bucket
+    if not out_bucket:
+        out_bucket = bucket
+
     try:
-        response = s3.get_object(Bucket=bucket, Key=key)
+        
+        response = s3.get_object(Bucket=in_bucket, Key=key)
         print("CONTENT TYPE: " + response['ContentType'])
 
         print(key, re.sub(r'\.tif', '.jpg', key, flags=re.IGNORECASE))
@@ -162,7 +177,7 @@ def lambda_handler(event, context):
             # Upload resized image to destination bucket
             s3.put_object(
                 Body=out_jpg_buffer,
-                Bucket=bucket,
+                Bucket=out_bucket,
                 Key=randomized_out_key,
                 StorageClass='GLACIER_IR',
                 ContentType='image/jpeg',
@@ -171,14 +186,14 @@ def lambda_handler(event, context):
 
     except Exception as e:
         print(e)
-        print('Error getting object {} from bucket {}. Make sure they exist and your bucket is in the same region as this function.'.format(key, bucket))
+        print('Error getting object {} from bucket {}. Make sure they exist and your bucket is in the same region as this function.'.format(key, in_bucket))
         raise e
 
     return {
         "statusCode": 200,
         "body": {
             "message": "hello world",
-            "bucket": bucket,
+            "bucket": out_bucket,
             "orig_img": key,
             "ocr_json": ocr_json,
             "web_img": randomized_out_key,
